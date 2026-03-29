@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AQI Monitoring System</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            margin-top: 50px;
+        }
+
+        input {
+            padding: 10px;
+            width: 200px;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        #result {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+
+        #status {
+            font-size: 20px;
+            margin-top: 10px;
+        }
+
+        canvas {
+            max-width: 600px;
+            margin: 30px auto;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>🌍 AQI Monitoring System</h1>
+
+    <input type="text" id="city" placeholder="Enter City Name">
+    <button onclick="getAQI()">Get AQI</button>
+
+    <h2 id="result"></h2>
+    <h3 id="status"></h3>
+
+    <!-- ✅ Graph Canvas -->
+    <canvas id="aqiChart"></canvas>
+</div>
+
+<!-- ✅ SCRIPT AT BOTTOM -->
+<script>
+let chart;
+
+async function getAQI() {
+    let city = document.getElementById("city").value;
+
+    if (!city) {
+        alert("Please enter a city");
+        return;
+    }
+
+    try {
+        // 🔥 Fetch AQI
+        let res = await fetch(`/aqi/${city}`);
+        if (!res.ok) throw new Error("AQI API failed");
+
+        let data = await res.json();
+
+        document.getElementById("result").innerText = "AQI: " + data.aqi;
+
+        // 🔥 AQI Status
+        let statusText = "";
+        let color = "";
+
+        let aqi = data.aqi;
+
+        if (aqi <= 50) {
+            statusText = "Good 😊";
+            color = "green";
+        } else if (aqi <= 100) {
+            statusText = "Moderate 😐";
+            color = "orange";
+        } else if (aqi <= 200) {
+            statusText = "Unhealthy 😷";
+            color = "red";
+        } else {
+            statusText = "Very Unhealthy ☠️";
+            color = "purple";
+        }
+
+        let statusDiv = document.getElementById("status");
+        statusDiv.innerText = statusText;
+        statusDiv.style.color = color;
+
+        // 🔥 Fetch History
+        let histRes = await fetch(`/history/${city}`);
+        if (!histRes.ok) throw new Error("History API failed");
+
+        let histData = await histRes.json();
+
+        console.log("History:", histData);
+
+        // 🔥 Check canvas
+        let canvas = document.getElementById("aqiChart");
+        if (!canvas) {
+            alert("Canvas not found!");
+            return;
+        }
+
+        let ctx = canvas.getContext("2d");
+
+        // Destroy previous chart
+        if (chart) {
+            chart.destroy();
+        }
+
+        // 🔥 Create Chart
+        chart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: histData.labels,
+                datasets: [{
+                    label: "AQI Trend",
+                    data: histData.values,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error(error);
+        alert("Error connecting to backend. Check console (F12)");
+    }
+}
+</script>
+
+</body>
+</html>
